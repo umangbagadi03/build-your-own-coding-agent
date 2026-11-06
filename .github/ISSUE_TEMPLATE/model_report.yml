@@ -1,0 +1,39 @@
+name: Model or provider report
+description: Share how the notebooks ran on a model or provider, whether it went well or badly
+title: "[Report] "
+body:
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+      placeholder: Ollama, Groq, OpenAI, or your own endpoint
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Exact model name
+    validations:
+      required: true
+  - type: input
+    id: notebooks
+    attributes:
+      label: Notebooks you ran
+      placeholder: 01 to 05
+    validations:
+      required: true
+  - type: dropdown
+    id: fixed
+    attributes:
+      label: Did the agent in notebook 05 fix the tests?
+      options:
+        - "Yes"
+        - "No"
+        - Didn't run notebook 05
+    validations:
+      required: true
+  - type: textarea
+    id: scorecard
+    attributes:
+      label: Scorecard and anything surprising
+      description: Paste the scorecard from notebook 05 and note any errors. Remove any keys first.
