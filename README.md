@@ -86,11 +86,18 @@ Everything else in this course makes that loop safe, efficient and reliable.
 | 14 | [Memory](notebooks/14_memory.ipynb) | A memory file the agent maintains, and what happens when it goes stale | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/14_memory.ipynb) |
 | 15 | [Agent v3](notebooks/15_agent_v3.ipynb) | Search, memory and a context budget in one agent, on a 10-file project | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/15_agent_v3.ipynb) |
 
+### Part 4: Reliability (in progress)
+
+| # | Notebook | What you build | Run |
+|---|---|---|---|
+| 16 | [Retries and Recovery](notebooks/16_retries.ipynb) | A flaky proxy for chaos testing, backoff with jitter, checkpoints that survive outages | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/16_retries.ipynb) |
+| 17 | [Tracing](notebooks/17_tracing.ipynb) | JSON Lines traces, a waterfall view, and replaying recorded runs as free tests | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/17_tracing.ipynb) |
+
 ### Coming next
 
 | Part | Notebooks | Topics |
 |---|---|---|
-| 4. Reliability | 16–20 | Evals, tracing, cost control, retries, caching |
+| 4. Reliability | 18–20 | Evals, cost control and caching, agent v4 |
 | 5. Multi-agent | 21–25 | Subagents, MCP, skills, hooks |
 | 6. Ship It | 26–30 | A real CLI, packaging, benchmarks on real bugs |
 
@@ -104,6 +111,10 @@ Every notebook runs offline with a script, so the lessons behave the same for ev
 | 06 | Fixed the bug in 10 model calls instead of 6, partly by reading the same three lines twice. |
 | 08 | Didn't run the injected `curl ... \| sh` command. Instead, its summary told *the user* to run it, as a "Setup Note". |
 | 10 | Fixed the crash, failed to create a test file, and then wrote "I also added a test file" in its summary. The mutation check caught it. |
+| 11 | Given a huge file, the run failed: Ollama most likely trimmed the prompt to its context limit without any error, and the model lost the question. |
+| 12 | Its compaction summary filed "the team voted for dosa on Friday" as a possible launch deadline. |
+| 14 | Never used the `remember` tool, so memory stayed empty and the second run was slower than the first. |
+| 15 | Changed the docstring from "2%" to "5%" instead of fixing the code. Tests still failed, and the scorecard said so. |
 
 Each finding is written up in its notebook, next to the code that catches it. This is the point of the course: an agent you build yourself is an agent whose failures you can see.
 
@@ -116,7 +127,7 @@ That server is a **script, not a model**. Its answers and token counts are canne
 | Provider | Set this | Status |
 |---|---|---|
 | Offline script | nothing | Tested on every push |
-| [Ollama](https://ollama.com) (local) | `LLM_PROVIDER=ollama` | Parts 1 and 2 tested on Gemma 4 E2B |
+| [Ollama](https://ollama.com) (local) | `LLM_PROVIDER=ollama` | Parts 1 to 3 tested on Gemma 4 E2B |
 | [Groq](https://console.groq.com) (has a free tier) | `GROQ_API_KEY` | Not tested yet |
 | OpenAI | `OPENAI_API_KEY` and `LLM_MODEL` | Not tested yet |
 | Any OpenAI-compatible API | `LLM_PROVIDER=custom`, `LLM_BASE_URL`, `LLM_MODEL`, and optionally `LLM_API_KEY` | Not tested yet |
