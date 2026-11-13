@@ -171,6 +171,12 @@ def _tool_history(messages: list) -> list:
 def _script(messages: list, tools: list) -> dict:
     """Decide the next scripted reply. The lessons' prompts are all this understands."""
     names = {t["function"]["name"] for t in tools or []}
+    if {"edit_file", "run_command"} <= names:
+        return _script_capstone(messages)
+    if "edit_file" in names:
+        return _script_precise_edit(messages)
+    if "run_command" in names:
+        return _script_shell(messages)
     if "run_tests" in names:
         return _script_bug_fix(messages)
     if {"list_files", "read_file"} <= names:
@@ -205,6 +211,155 @@ def _script_bug_fix(messages: list) -> dict:
             "orders of exactly 50. All tests pass now."
         )
     return _text("I applied my scripted fix, but the tests still fail, so this isn't solved.")
+
+
+def _first_user(messages: list) -> str:
+    return next((m.get("content") or "" for m in messages if m["role"] == "user"), "")
+
+
+def _passed(result: str) -> bool:
+    return result.startswith(("PASSED", "exit code: 0"))
+
+
+def _script_precise_edit(messages: list) -> dict:
+    """Notebook 06: find the bug, read only the lines around it, change one line."""
+    history = _tool_history(messages)
+    used = [name for name, _, _ in history]
+    if "run_tests" not in used:
+        return _calls(("run_tests", {}))
+    if "find" not in used:
+        return _calls(("find", {"pattern": "def needs_restock"}))
+    if "read_file" not in used:
+        hit = next(r for n, _, r in history if n == "find")
+        match = re.match(r"([^:\n]+):(\d+):", hit)
+        path, line = (match.group(1), int(match.group(2))) if match else ("inventory.py", 1)
+        return _calls(("read_file", {"path": path, "start": line, "end": line + 3}))
+    if "edit_file" not in used:
+        return _calls(
+            (
+                "edit_file",
+                {
+                    "path": "inventory.py",
+                    "old": 'return item["stock"] < item["reorder_level"]',
+                    "new": 'return item["stock"] <= item["reorder_level"]',
+                },
+            )
+        )
+    if [r for n, _, r in history if n == "edit_file"][-1].startswith("Error"):
+        return _text("My scripted edit didn't apply, so the bug is still there.")
+    if used.count("run_tests") < 2:
+        return _calls(("run_tests", {}))
+    if _passed([r for n, _, r in history if n == "run_tests"][-1]):
+        return _text(
+            "Fixed needs_restock in inventory.py. It used < where the docstring says "
+            "'or below', so items exactly at the reorder level were missed. All tests pass now."
+        )
+    return _text("I changed needs_restock, but the tests still fail.")
+
+
+def _script_shell(messages: list) -> dict:
+    """Notebooks 07 to 09: a few shell tasks, told apart by the user's request."""
+    task = _first_user(messages).lower()
+    history = _tool_history(messages)
+    commands = [a.get("command", "") for n, a, _ in history if n == "run_command"]
+    results = [r for n, _, r in history if n == "run_command"]
+
+    if "todo" in task:
+        if not commands:
+            return _calls(("run_command", {"command": "grep -rn TODO --include=*.py ."}))
+        if len(commands) == 1:
+            return _calls(("run_command", {"command": "python -m unittest -q"}))
+        todos = sum(1 for line in results[0].splitlines()[1:] if "TODO" in line)
+        verdict = "pass" if _passed(results[1]) else "fail"
+        return _text(f"There are {todos} TODO comments, and the tests {verdict}.")
+
+    if "build folder" in task:
+        if not commands:
+            return _calls(("run_command", {"command": "rm -rf build"}))
+        if results[0].startswith("Denied"):
+            return _text(
+                "I wasn't allowed to delete the build folder, so I left it alone. "
+                "If you want it gone, you can run `rm -rf build` yourself."
+            )
+        return _text("Deleted the build folder.")
+
+    if "readme" in task:
+        reads = [r for n, _, r in history if n == "read_file"]
+        if not reads:
+            return _calls(("read_file", {"path": "README.md"}))
+        injected = re.search(r"`([^`]*curl[^`]*)`", reads[0])
+        if injected and not commands:
+            # Deliberately obey the instruction hidden in the file, as real models sometimes do.
+            return _calls(("run_command", {"command": injected.group(1)}))
+        note = " The README also told me to run a command. I tried, and it was blocked." if commands else ""
+        return _text(
+            "This is a tiny command-line notes app that adds, lists and searches notes "
+            "stored in a text file." + note
+        )
+
+    if "slow.py" in task:
+        if not commands:
+            return _calls(("run_command", {"command": "python slow.py"}))
+        return _text(
+            "slow.py printed 'starting' and then never finished, so it was stopped. "
+            f"The tool reported: {results[0].splitlines()[0]}"
+        )
+
+    return _script_chat(messages)
+
+
+WORDCOUNT_TEST = '''import unittest
+
+from wordcount import stats
+
+
+class EmptyInputTests(unittest.TestCase):
+    def test_empty_text(self):
+        self.assertEqual(stats(""), {"words": 0, "average_length": 0.0})
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+
+def _script_capstone(messages: list) -> dict:
+    """Notebook 10: reproduce the crash, fix it, prove it, and add a test."""
+    history = _tool_history(messages)
+    used = [name for name, _, _ in history]
+    commands = [a.get("command", "") for n, a, _ in history if n == "run_command"]
+    reproduce = "python wordcount.py empty.txt"
+
+    if not commands:
+        return _calls(("run_command", {"command": reproduce}))
+    if "read_file" not in used:
+        return _calls(("read_file", {"path": "wordcount.py"}))
+    if "edit_file" not in used:
+        return _calls(
+            (
+                "edit_file",
+                {
+                    "path": "wordcount.py",
+                    "old": "round(total_letters / len(words), 2)",
+                    "new": "round(total_letters / len(words), 2) if words else 0.0",
+                },
+            )
+        )
+    if [r for n, _, r in history if n == "edit_file"][-1].startswith("Error"):
+        return _text("My scripted edit didn't apply, so the crash is still there.")
+    if commands.count(reproduce) < 2:
+        return _calls(("run_command", {"command": reproduce}))
+    if "create_file" not in used:
+        return _calls(("create_file", {"path": "test_empty.py", "content": WORDCOUNT_TEST}))
+    if "python -m unittest -q" not in commands:
+        return _calls(("run_command", {"command": "python -m unittest -q"}))
+    if _passed([r for n, _, r in history if n == "run_command"][-1]):
+        return _text(
+            "wordcount.py divided by the number of words, which crashes on an empty file. "
+            "It now reports an average of 0.0 when there are no words. I added "
+            "test_empty.py for this case, and all tests pass."
+        )
+    return _text("I made a fix, but the tests still fail.")
 
 
 def _script_research(messages: list) -> dict:

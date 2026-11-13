@@ -66,11 +66,20 @@ Everything else in this course makes that loop safe, efficient and reliable.
 | 04 | [The Agent Loop](notebooks/04_agent_loop.ipynb) | The loop itself, why its cost grows so fast, and testing with fake models | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/04_agent_loop.ipynb) |
 | 05 | [Your First Real Agent](notebooks/05_first_real_agent.ipynb) | An agent that fixes real bugs, sandboxed file tools, independent verification | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/05_first_real_agent.ipynb) |
 
+### Part 2: Tools (available now)
+
+| # | Notebook | What you build | Run |
+|---|---|---|---|
+| 06 | [Precise File Edits](notebooks/06_precise_edits.ipynb) | Search-and-replace edits, line ranges, and error messages a model can recover from | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/06_precise_edits.ipynb) |
+| 07 | [A Shell Tool](notebooks/07_shell_tool.ipynb) | A shell tool, timeouts that really stop processes, output clipping, a clean environment | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/07_shell_tool.ipynb) |
+| 08 | [Permissions](notebooks/08_permissions.ipynb) | An allow/ask/deny policy, human approval, and a prompt-injection attack stopped | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/08_permissions.ipynb) |
+| 09 | [Sandboxing](notebooks/09_sandboxing.ipynb) | CPU, disk and memory limits, plus containers with no network | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/09_sandboxing.ipynb) |
+| 10 | [Agent v2](notebooks/10_agent_v2.ipynb) | An agent that takes a bug report, fixes it, and writes a test that really catches it | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/10_agent_v2.ipynb) |
+
 ### Coming next
 
 | Part | Notebooks | Topics |
 |---|---|---|
-| 2. Tools | 06–10 | Precise file edits, a shell, permissions, a real sandbox |
 | 3. Context | 11–15 | Token budgets, compaction, memory, code search |
 | 4. Reliability | 16–20 | Evals, tracing, cost control, retries, caching |
 | 5. Multi-agent | 21–25 | Subagents, MCP, skills, hooks |
@@ -90,7 +99,7 @@ That server is a **script, not a model**. Its answers and token counts are canne
 | OpenAI | `OPENAI_API_KEY` and `LLM_MODEL` | Not tested yet |
 | Any OpenAI-compatible API | `LLM_PROVIDER=custom`, `LLM_BASE_URL`, `LLM_MODEL`, and optionally `LLM_API_KEY` | Not tested yet |
 
-Models need tool-calling support for notebooks 03 to 05. On Colab, add keys under **Secrets**, not in a notebook cell, so they don't end up in a saved copy.
+Models need tool-calling support from notebook 03 onwards. On Colab, add keys under **Secrets**, not in a notebook cell, so they don't end up in a saved copy.
 
 ## Run it locally
 
@@ -116,7 +125,7 @@ python scripts/run_notebooks.py
 
 ## Safety
 
-A coding agent runs actions chosen by a model. Notebook 05 limits file access to a temporary folder and has no shell tool, but `run_tests` still executes code the model may have written, with your user permissions. **That isn't a true sandbox.** Run it on the sample project provided, or on Colab, and don't point it at anything you care about until Part 2.
+A coding agent runs actions chosen by a model. Every agent in this course works in a temporary folder, and Part 2 adds a permission policy, resource limits and an audit log. Even so, `python` commands still run on your machine with your user permissions unless you use the container option in notebook 09. Run the agents on the sample projects provided, or on Colab, and read notebooks 08 and 09 before pointing an agent at anything you care about.
 
 ## Contributing
 
