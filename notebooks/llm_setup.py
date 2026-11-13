@@ -171,6 +171,12 @@ def _tool_history(messages: list) -> list:
 def _script(messages: list, tools: list) -> dict:
     """Decide the next scripted reply. The lessons' prompts are all this understands."""
     names = {t["function"]["name"] for t in tools or []}
+    if {"remember", "find_references"} <= names:
+        return _script_agent_v3(messages)
+    if "find_references" in names:
+        return _script_code_search(messages)
+    if "remember" in names:
+        return _script_memory(messages)
     if {"edit_file", "run_command"} <= names:
         return _script_capstone(messages)
     if "edit_file" in names:
@@ -362,19 +368,133 @@ def _script_capstone(messages: list) -> dict:
     return _text("I made a fix, but the tests still fail.")
 
 
+def _script_code_search(messages: list) -> dict:
+    """Notebook 13: grep for a word, jump to the definition, then find the callers."""
+    history = _tool_history(messages)
+    used = [name for name, _, _ in history]
+    if "grep" not in used:
+        return _calls(("grep", {"pattern": "loyal"}))
+    if "find_definition" not in used:
+        hits = next(r for n, _, r in history if n == "grep")
+        match = re.search(r"def (\w*loyal\w*)", hits)
+        return _calls(("find_definition", {"name": match.group(1) if match else "loyalty_discount"}))
+    name = next(a.get("name", "") for n, a, _ in history if n == "find_definition")
+    if "find_references" not in used:
+        return _calls(("find_references", {"name": name}))
+    definition = next(r for n, _, r in history if n == "find_definition")
+    references = next(r for n, _, r in history if n == "find_references")
+    where = re.match(r"(\S+?):(\d+)-(\d+)", definition)
+    location = f"{where.group(1)}, lines {where.group(2)}-{where.group(3)}" if where else "unknown"
+    callers = sorted(set(re.findall(r"\(in (\w+)\)", references)))
+    return _text(
+        f"The loyalty discount is calculated by {name} in {location}. "
+        f"It's used by: {', '.join(callers) if callers else 'nothing'}."
+    )
+
+
+def _script_memory(messages: list) -> dict:
+    """Notebook 14: work out how to run the tests, using and updating memory."""
+    system = " ".join(m.get("content") or "" for m in messages if m["role"] == "system")
+    history = _tool_history(messages)
+    runs = [(a.get("command", ""), r) for n, a, r in history if n == "run_command"]
+    remembered = [a.get("note", "") for n, a, _ in history if n == "remember"]
+    memory = re.search(r"Run tests with: (.+?)(?: \(saved [^)]*\))?$", system, re.MULTILINE)
+
+    def worked(command: str, result: str) -> bool:
+        ran_tests = re.search(r"Ran [1-9]\d* test", result)
+        return "unittest" in command and result.startswith("exit code: 0") and bool(ran_tests)
+
+    if not runs:
+        first = memory.group(1).strip() if memory else "python -m unittest"
+        return _calls(("run_command", {"command": first}))
+    command, result = runs[-1]
+    if worked(command, result):
+        if not remembered and (not memory or memory.group(1).strip() != command):
+            return _calls(("remember", {"note": f"Run tests with: {command}"}))
+        count = re.search(r"Ran (\d+) test", result)
+        return _text(f"The tests pass ({count.group(1) if count else 'all'} tests). I ran them with `{command}`.")
+    if not any(c.startswith("find") for c, _ in runs):
+        return _calls(("run_command", {"command": "find . -name 'test_*.py'"}))
+    found = next(r for c, r in runs if c.startswith("find"))
+    folder = re.search(r"\./([\w/]+)/test_\w+\.py", found)
+    attempt = f"python -m unittest discover -s {folder.group(1) if folder else '.'}"
+    if any(c == attempt for c, _ in runs):
+        return _text("I couldn't find a way to run the tests.")
+    return _calls(("run_command", {"command": attempt}))
+
+
+def _script_agent_v3(messages: list) -> dict:
+    """Notebook 15: a bug in a larger project, found with search, fixed and remembered."""
+    history = _tool_history(messages)
+    used = [name for name, _, _ in history]
+    commands = [a.get("command", "") for n, a, _ in history if n == "run_command"]
+    test_command = "python -m unittest discover -s tests"
+
+    if not commands:
+        return _calls(("run_command", {"command": test_command}))
+    if "grep" not in used:
+        return _calls(("grep", {"pattern": "loyal"}))
+    if "find_references" not in used:
+        return _calls(("find_references", {"name": "loyalty_discount"}))
+    if "read_file" not in used:
+        references = next(r for n, _, r in history if n == "find_references")
+        match = re.search(r"([\w/]+\.py):(\d+) \(in final_price\)", references)
+        path, line = (match.group(1), int(match.group(2))) if match else ("shop/pricing.py", 1)
+        return _calls(("read_file", {"path": path, "start": max(1, line - 4), "end": line + 3}))
+    if "edit_file" not in used:
+        return _calls(
+            (
+                "edit_file",
+                {
+                    "path": "shop/pricing.py",
+                    "old": "amount = amount + loyalty_discount(",
+                    "new": "amount = amount - loyalty_discount(",
+                },
+            )
+        )
+    if [r for n, _, r in history if n == "edit_file"][-1].startswith("Error"):
+        return _text("My scripted edit didn't apply, so the bug is still there.")
+    if commands.count(test_command) < 2:
+        return _calls(("run_command", {"command": test_command}))
+    passed = _passed([r for n, _, r in history if n == "run_command"][-1])
+    if passed and "remember" not in used:
+        return _calls(("remember", {"note": f"Run tests with: {test_command}"}))
+    if passed:
+        return _text(
+            "Loyal customers were charged more because final_price in shop/pricing.py added the "
+            "loyalty discount instead of subtracting it. I changed + to -, and all tests pass."
+        )
+    return _text("I changed final_price, but the tests still fail.")
+
+
 def _script_research(messages: list) -> dict:
     history = _tool_history(messages)
-    listing = next((r for n, _, r in history if n == "list_files"), None)
-    if listing is None:
+    summary = next(
+        (m.get("content") or "" for m in messages
+         if m["role"] == "user" and (m.get("content") or "").startswith("Summary of the work so far")),
+        "",
+    )
+    if summary:  # earlier steps were compacted; answer from the summary and anything read since
+        return _research_answer(summary + " " + " ".join(r for n, _, r in history if n == "read_file"))
+    files = None
+    for listing in reversed([r for n, _, r in history if n == "list_files"]):
+        try:
+            files = json.loads(listing)
+            break
+        except ValueError:  # this listing was cleared by compaction (notebook 12)
+            continue
+    if files is None:
         return _calls(("list_files", {}))
-    files = json.loads(listing)
     read = {a.get("path") for n, a, _ in history if n == "read_file"}
     unread = [f for f in files if f not in read]
     if unread and not read:
         return _calls(("read_file", {"path": unread[0]}))  # look at one file first
     if unread:
         return _calls(*[("read_file", {"path": f}) for f in unread])  # then read the rest together
-    notes = " ".join(r for n, _, r in history if n == "read_file")
+    return _research_answer(" ".join(r for n, _, r in history if n == "read_file"))
+
+
+def _research_answer(notes: str) -> dict:
     deadline = re.search(r"deadline[^.]*?((?:January|February|March|April|May|June) \d+)", notes)
     owner = re.search(r"owner: (\w+)", notes)
     return _text(
@@ -402,6 +522,14 @@ def _script_chat(messages: list) -> dict:
     system = " ".join(m.get("content") or "" for m in messages if m["role"] == "system").lower()
     users = [m.get("content") or "" for m in messages if m["role"] == "user"]
 
+    if "summarize the work so far" in prompt:
+        # Notebook 12's compaction step. Keep the lines that carry facts, as a summary would.
+        keep = [
+            line.strip()
+            for line in (messages[-1].get("content") or "").splitlines()
+            if any(word in line.lower() for word in ("deadline", "owner", "list_files", "task:"))
+        ]
+        return _text("\n".join(f"- {line[:200]}" for line in keep) or "- Nothing important yet.")
     if "pirate" in system:
         return _text("Arr, an API be a contract between programs, matey!")
     if "what is my name" in prompt or "what's my name" in prompt:
@@ -444,7 +572,7 @@ def _next_call_id() -> str:
 
 def _estimate_tokens(value) -> int:
     """Rough stand-in for a real tokenizer: about four characters per token."""
-    return max(1, len(json.dumps(value)) // 4)
+    return max(1, len(json.dumps(value, ensure_ascii=False)) // 4)
 
 
 def _pieces(text: str, size: int = 12) -> list:

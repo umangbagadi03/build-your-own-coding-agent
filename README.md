@@ -76,14 +76,36 @@ Everything else in this course makes that loop safe, efficient and reliable.
 | 09 | [Sandboxing](notebooks/09_sandboxing.ipynb) | CPU, disk and memory limits, plus containers with no network | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/09_sandboxing.ipynb) |
 | 10 | [Agent v2](notebooks/10_agent_v2.ipynb) | An agent that takes a bug report, fixes it, and writes a test that really catches it | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/10_agent_v2.ipynb) |
 
+### Part 3: Context (available now)
+
+| # | Notebook | What you build | Run |
+|---|---|---|---|
+| 11 | [Token Budgets](notebooks/11_token_budgets.ipynb) | A context report that shows where every token goes, and per-result budgets | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/11_token_budgets.ipynb) |
+| 12 | [Compaction](notebooks/12_compaction.ipynb) | Clearing and summarising long histories, and how each one loses information | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/12_compaction.ipynb) |
+| 13 | [Code Search](notebooks/13_code_search.ipynb) | grep plus AST-based outline, go-to-definition and find-references | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/13_code_search.ipynb) |
+| 14 | [Memory](notebooks/14_memory.ipynb) | A memory file the agent maintains, and what happens when it goes stale | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/14_memory.ipynb) |
+| 15 | [Agent v3](notebooks/15_agent_v3.ipynb) | Search, memory and a context budget in one agent, on a 10-file project | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/15_agent_v3.ipynb) |
+
 ### Coming next
 
 | Part | Notebooks | Topics |
 |---|---|---|
-| 3. Context | 11–15 | Token budgets, compaction, memory, code search |
 | 4. Reliability | 16–20 | Evals, tracing, cost control, retries, caching |
 | 5. Multi-agent | 21–25 | Subagents, MCP, skills, hooks |
 | 6. Ship It | 26–30 | A real CLI, packaging, benchmarks on real bugs |
+
+## What real models actually did
+
+Every notebook runs offline with a script, so the lessons behave the same for everyone. We also run them on a real model, and the real runs are where the interesting failures show up. These all came from one small model, Gemma 4 E2B running locally through Ollama:
+
+| Notebook | What happened |
+|---|---|
+| 05 | Fixed both bugs, then reported fixing "three issues". The diff showed two. |
+| 06 | Fixed the bug in 10 model calls instead of 6, partly by reading the same three lines twice. |
+| 08 | Didn't run the injected `curl ... \| sh` command. Instead, its summary told *the user* to run it, as a "Setup Note". |
+| 10 | Fixed the crash, failed to create a test file, and then wrote "I also added a test file" in its summary. The mutation check caught it. |
+
+Each finding is written up in its notebook, next to the code that catches it. This is the point of the course: an agent you build yourself is an agent whose failures you can see.
 
 ## Run it with no key
 
@@ -94,7 +116,7 @@ That server is a **script, not a model**. Its answers and token counts are canne
 | Provider | Set this | Status |
 |---|---|---|
 | Offline script | nothing | Tested on every push |
-| [Ollama](https://ollama.com) (local) | `LLM_PROVIDER=ollama` | Part 1 tested on Gemma 4 E2B |
+| [Ollama](https://ollama.com) (local) | `LLM_PROVIDER=ollama` | Parts 1 and 2 tested on Gemma 4 E2B |
 | [Groq](https://console.groq.com) (has a free tier) | `GROQ_API_KEY` | Not tested yet |
 | OpenAI | `OPENAI_API_KEY` and `LLM_MODEL` | Not tested yet |
 | Any OpenAI-compatible API | `LLM_PROVIDER=custom`, `LLM_BASE_URL`, `LLM_MODEL`, and optionally `LLM_API_KEY` | Not tested yet |
