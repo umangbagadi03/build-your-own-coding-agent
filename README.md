@@ -117,6 +117,7 @@ Every notebook runs offline with a script, so the lessons behave the same for ev
 | 12 | Its compaction summary filed "the team voted for dosa on Friday" as a possible launch deadline. |
 | 14 | Never used the `remember` tool, so memory stayed empty and the second run was slower than the first. |
 | 15 | Changed the docstring from "2%" to "5%" instead of fixing the code. Tests still failed, and the scorecard said so. |
+| 17 | Spent over 99% of the run's time in model calls, then gave an empty final answer after producing about 3,900 output tokens. The trace showed both. |
 
 Each finding is written up in its notebook, next to the code that catches it. This is the point of the course: an agent you build yourself is an agent whose failures you can see.
 
