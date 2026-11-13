@@ -86,18 +86,20 @@ Everything else in this course makes that loop safe, efficient and reliable.
 | 14 | [Memory](notebooks/14_memory.ipynb) | A memory file the agent maintains, and what happens when it goes stale | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/14_memory.ipynb) |
 | 15 | [Agent v3](notebooks/15_agent_v3.ipynb) | Search, memory and a context budget in one agent, on a 10-file project | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/15_agent_v3.ipynb) |
 
-### Part 4: Reliability (in progress)
+### Part 4: Reliability (available now)
 
 | # | Notebook | What you build | Run |
 |---|---|---|---|
 | 16 | [Retries and Recovery](notebooks/16_retries.ipynb) | A flaky proxy for chaos testing, backoff with jitter, checkpoints that survive outages | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/16_retries.ipynb) |
 | 17 | [Tracing](notebooks/17_tracing.ipynb) | JSON Lines traces, a waterfall view, and replaying recorded runs as free tests | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/17_tracing.ipynb) |
+| 18 | [Evals](notebooks/18_evals.ipynb) | Hidden tests, separate graders, prompt comparisons, and pass@k versus pass^k | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/18_evals.ipynb) |
+| 19 | [Cost and Caching](notebooks/19_cost_and_caching.ipynb) | A budget guard, and measuring how timestamps and history edits break prompt caching | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/19_cost_and_caching.ipynb) |
+| 20 | [Agent v4](notebooks/20_agent_v4.ipynb) | Retries, traces and budgets, tested by running the eval suite over a failing network | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/umangbagadi03/build-your-own-coding-agent/blob/main/notebooks/20_agent_v4.ipynb) |
 
 ### Coming next
 
 | Part | Notebooks | Topics |
 |---|---|---|
-| 4. Reliability | 18–20 | Evals, cost control and caching, agent v4 |
 | 5. Multi-agent | 21–25 | Subagents, MCP, skills, hooks |
 | 6. Ship It | 26–30 | A real CLI, packaging, benchmarks on real bugs |
 

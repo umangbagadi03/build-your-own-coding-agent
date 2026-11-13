@@ -329,42 +329,84 @@ if __name__ == "__main__":
 '''
 
 
+def _test_file(module: str, imports: str, body: str) -> str:
+    return (f"import unittest\n\nfrom {module} import {imports}\n\n\n"
+            f"class BugReportTests(unittest.TestCase):\n{body}\n\n"
+            "if __name__ == \"__main__\":\n    unittest.main()\n")
+
+
+# Scripted fixes for the bug reports in notebooks 10, 18 and 20, keyed by the file named in the report.
+# discount.py is deliberately "fixed" wrong: the change only works for the example in the report.
+BUG_FIXES = {
+    "wordcount.py": {
+        "reproduce": "python wordcount.py empty.txt",
+        "old": "round(total_letters / len(words), 2)",
+        "new": "round(total_letters / len(words), 2) if words else 0.0",
+        "test_path": "test_empty.py",
+        "test": WORDCOUNT_TEST,
+        "summary": "wordcount.py divided by the number of words, which crashes on an empty file. "
+                   "It now reports an average of 0.0 when there are no words. I added "
+                   "test_empty.py for this case, and all tests pass.",
+    },
+    "convert.py": {
+        "reproduce": "python convert.py 100",
+        "old": "celsius * 9 / 5 + 23",
+        "new": "celsius * 9 / 5 + 32",
+        "test_path": "test_boiling.py",
+        "test": _test_file("convert", "to_fahrenheit",
+                           "    def test_boiling_point(self):\n        self.assertEqual(to_fahrenheit(100), 212)\n"),
+        "summary": "to_fahrenheit added 23 instead of 32. Fixed, added test_boiling.py, and all tests pass.",
+    },
+    "names.py": {
+        "reproduce": "python names.py 'Asha  Verma'",
+        "old": 'full_name.split(" ")',
+        "new": "full_name.split()",
+        "test_path": "test_spaces.py",
+        "test": _test_file("names", "initials",
+                           '    def test_double_space(self):\n        self.assertEqual(initials("Asha  Verma"), "A.V.")\n'),
+        "summary": "initials split on single spaces, so two spaces made an empty part and crashed. "
+                   "It now splits on any whitespace. Added test_spaces.py, and all tests pass.",
+    },
+    "discount.py": {
+        "reproduce": "python discount.py 200 10",
+        "old": "round(price - percent, 2)",
+        "new": "round(price - percent * 2, 2)",
+        "test_path": "test_coupon.py",
+        "test": _test_file("discount", "apply_coupon",
+                           "    def test_report_example(self):\n        self.assertEqual(apply_coupon(200, 10), 180)\n"),
+        "summary": "apply_coupon took off the wrong amount. Fixed so a 10% coupon on Rs 200 gives Rs 180. "
+                   "Added test_coupon.py, and all tests pass.",
+    },
+}
+
+
 def _script_capstone(messages: list) -> dict:
-    """Notebook 10: reproduce the crash, fix it, prove it, and add a test."""
+    """Notebooks 10, 18 and 20: reproduce the bug, fix it, prove it, and add a test."""
+    report = _first_user(messages)
+    task = next((BUG_FIXES[name] for name in BUG_FIXES if name in report), None)
+    if task is None:
+        return _text("(offline script) I don't have a scripted fix for this bug report.")
+    path = next(name for name in BUG_FIXES if BUG_FIXES[name] is task)
     history = _tool_history(messages)
     used = [name for name, _, _ in history]
     commands = [a.get("command", "") for n, a, _ in history if n == "run_command"]
-    reproduce = "python wordcount.py empty.txt"
 
     if not commands:
-        return _calls(("run_command", {"command": reproduce}))
+        return _calls(("run_command", {"command": task["reproduce"]}))
     if "read_file" not in used:
-        return _calls(("read_file", {"path": "wordcount.py"}))
+        return _calls(("read_file", {"path": path}))
     if "edit_file" not in used:
-        return _calls(
-            (
-                "edit_file",
-                {
-                    "path": "wordcount.py",
-                    "old": "round(total_letters / len(words), 2)",
-                    "new": "round(total_letters / len(words), 2) if words else 0.0",
-                },
-            )
-        )
+        return _calls(("edit_file", {"path": path, "old": task["old"], "new": task["new"]}))
     if [r for n, _, r in history if n == "edit_file"][-1].startswith("Error"):
-        return _text("My scripted edit didn't apply, so the crash is still there.")
-    if commands.count(reproduce) < 2:
-        return _calls(("run_command", {"command": reproduce}))
+        return _text("My scripted edit didn't apply, so the bug is still there.")
+    if commands.count(task["reproduce"]) < 2:
+        return _calls(("run_command", {"command": task["reproduce"]}))
     if "create_file" not in used:
-        return _calls(("create_file", {"path": "test_empty.py", "content": WORDCOUNT_TEST}))
+        return _calls(("create_file", {"path": task["test_path"], "content": task["test"]}))
     if "python -m unittest -q" not in commands:
         return _calls(("run_command", {"command": "python -m unittest -q"}))
     if _passed([r for n, _, r in history if n == "run_command"][-1]):
-        return _text(
-            "wordcount.py divided by the number of words, which crashes on an empty file. "
-            "It now reports an average of 0.0 when there are no words. I added "
-            "test_empty.py for this case, and all tests pass."
-        )
+        return _text(task["summary"])
     return _text("I made a fix, but the tests still fail.")
 
 
